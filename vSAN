@@ -1,0 +1,25 @@
+#!/bin/sh
+
+esxcli vsan cluster leave
+ 
+logger init vrack-firstboot: Done leaving vsan cluster.
+sleep 60
+ 
+for uid in `esxcfg-scsidevs -c | grep -v Enclosure | grep -i naa. | awk '{ print $1}'` ; do echo $uid
+logger init vrack-firstboot: Forcing device $uid to be local...
+esxcli storage nmp satp rule add --satp VMW_SATP_LOCAL --device $uid --option="enable_local"
+esxcli storage core claiming unclaim --type device --device $uid
+esxcli storage core claimrule load
+esxcli storage core claimrule run
+done
+ 
+esxcli vsan policy setdefault -c cluster -p "((\"hostFailuresToTolerate\" i1) (\"forceProvisioning\" i1))"
+esxcli vsan policy setdefault -c vmnamespace -p "((\"hostFailuresToTolerate\" i1) (\"forceProvisioning\" i1))"
+esxcli vsan policy setdefault -c vdisk -p "((\"hostFailuresToTolerate\" i1) (\"forceProvisioning\" i1))"
+ 
+esxcli vsan cluster join -u VSAN_UUID
+esxcli vsan storage automode set --enabled true
+esxcli storage core adapter rescan --all
+ 
+logger init vrack-firstboot: Done setting vsan
+
