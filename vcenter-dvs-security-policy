@@ -1,0 +1,50 @@
+<#
+SYNOPSIS
+    Setting VSAN network in Node0, Node 1 and and Node 2 ESXi Hosts
+	Updating DVS Portgroup Security Policies
+DESCRIPTION
+    This script will remove vmk3 from VSAN network and add vmk1 and update the agent and master multicast
+	addresses. Also it sets the security policies for all the portgroups in DVS.
+NOTES
+    File Name      : powershell.ps1
+    Author         : Boopathi Duraisamy 
+    Prerequisite   : PowerShell 64bit.
+#>
+Add-PSSnapin VMware.VimAutomation.Core -ErrorAction SilentlyContinue;
+Add-PSSnapin VMware.VimAutomation.Vds -ErrorAction SilentlyContinue;
+. 'C:\Program Files (x86)\VMware\Infrastructure\vSphere PowerCLI\Scripts\Initialize-PowerCLIEnvironment.ps1'
+$Hosts = @("ip1", "ip2") # replace real IP with ip1 and ip2 and so on
+foreach ($ESXHosts in $Hosts) {
+Connect-VIServer $ESXHosts -User usedid -Password pwd -WarningAction SilentlyContinue # replace userid and pwd with actuals
+$interfacename = "vmk1"
+$vmkn="vmk3"
+$esxcli = Get-EsxCli -VMHost $ESXHosts
+$var=$esxcli.vsan.network.list()
+$agentmcaddr = "224.2.3.4"
+$agentmcport = $var[0].AgentGroupMulticastPort 
+$mastermcaddr = "224.1.2.3"
+$mastermcport = $var[0].MasterGroupMulticastPort
+$multicastttl = $var[0].MulticastTTL
+If (($var[0].MulticastTTL)-eq 5) 
+	{
+	$esxcli.vsan.network.ipv4.remove($true, $vmkn)
+	$esxcli.vsan.network.ipv4.add($agentmcaddr,$agentmcport,$interfacename,$mastermcaddr,$mastermcport,$multicastttl)
+	} 
+else {}
+disconnect-viserver -confirm:$false
+}
+Write-Host "`n`n`n`n`n`n"
+$server = Read-Host "Enter the vCenter IP "
+Write-Host "`n`n`n`n`n`n"
+Connect-VIServer  -Server $server -Protocol https -User administrator@vsphere.local -Password VMware123! -WarningAction SilentlyContinue
+$newList = Get-VMHost
+foreach($vSwitch in $newList | Get-VDSwitch){
+foreach($portgroup in (Get-VirtualPortGroup -Distributed -VirtualSwitch $vSwitch)){
+$namep = "$portgroup"
+$esxcli = Get-EsxCli -VMHost $newList
+Get-VDPortgroup $namep | Get-VDSecurityPolicy | Set-VDSecurityPolicy -MacChanges $true -ForgedTransmits $true -AllowPromiscuous $true
+} 
+}
+disconnect-viserver -confirm:$false
+
+
