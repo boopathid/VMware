@@ -1,0 +1,33 @@
+#!/bin/bash
+killall -9 java
+killall -9 java
+if [ -s  /local1/folder2/filename ]
+       then
+          line_no=$(awk '{x++} END {print x}' /local1/folder2/filename)
+else
+  echo "File does not exist. Exiting..."
+  exit 1
+fi
+while [ $line_no -gt '4' ]
+do
+        service xxxx start
+        sleep 2m
+        killall -9 java
+		killall -9 java
+        line_no=$(awk '{x++} END {print x}' /local1/folder2/filename)
+done
+if [ $line_no -eq 4 ]
+then
+	if grep -qs text /local1/folder2/filename
+		then
+		service xxxxx start
+	else
+	cat <<EOF  >> /local1/folder2/filename
+Insert into .......
+
+EOF
+service xxxx start
+	fi
+else
+exit 1
+fi
